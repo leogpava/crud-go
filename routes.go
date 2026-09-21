@@ -15,73 +15,94 @@ func NovaRotas(service *Service) *Rotas {
 	return &Rotas{service: service}
 }
 
-//GET /tarefas - lista todas
+// GET /operacoes - lista todas as operacoes.
 
 func (rt *Rotas) Listar(c *gin.Context) {
-	tarefas, err := rt.service.ListarTarefas()
+	operacoes, err := rt.service.ListarOperacoes()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"erro": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, tarefas)
+	c.JSON(http.StatusOK, operacoes)
 }
 
-// POST /tarefas - cria uma nova tarefa.
+// POST /operacoes - cria uma nova operacao.
 func (rt *Rotas) Criar(c *gin.Context) {
 	var body struct {
-		Texto string `json:"texto"`
+		OperacaoID         string  `json:"operacaoID"`
+		ValorFinanciado    float64 `json:"valorFinanciado"`
+		QuantidadeParcelas int     `json:"quantidadeParcelas"`
+		TaxaJuros          float64 `json:"taxaJuros"`
+		PrimeiroVencimento string  `json:"primeiroVencimento"`
+		SistemaAmortizacao string  `json:"sistemaAmortizacao"`
 	}
 
 	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "corpo da requsicao invalido."})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "corpo da requisição inválido"})
 		return
 	}
 
-	tarefa, err := rt.service.CriarTarefa(body.Texto)
+	operacao, err := rt.service.CriarOperacao(NovaOperacao{
+		OperacaoID:         body.OperacaoID,
+		ValorFinanciado:    body.ValorFinanciado,
+		QuantidadeParcelas: body.QuantidadeParcelas,
+		TaxaJuros:          body.TaxaJuros,
+		PrimeiroVencimento: body.PrimeiroVencimento,
+		SistemaAmortizacao: body.SistemaAmortizacao,
+	})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, tarefa)
+	c.JSON(http.StatusCreated, operacao)
 }
 
-//PUT /tarefas/:id - atualiza a tarefa.
-
-func (rt *Rotas) Atualizar(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+// POST /operacoes/:operacaoID/parcelas/importar - busca o calendario no grupo de juros.
+func (rt *Rotas) ImportarParcelas(c *gin.Context) {
+	parcelas, err := rt.service.ImportarParcelas(c.Param("operacaoID"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "id invalido"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
+	c.JSON(http.StatusCreated, parcelas)
+}
 
+// GET /operacoes/:operacaoID/parcelas - lista as parcelas com a situacao de cada uma.
+func (rt *Rotas) ListarParcelas(c *gin.Context) {
+	parcelas, err := rt.service.ListarParcelas(c.Param("operacaoID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, parcelas)
+}
+
+// POST /operacoes/:operacaoID/parcelas/:numero/pagamento - da baixa na parcela.
+func (rt *Rotas) PagarParcela(c *gin.Context) {
 	var body struct {
-		Feita bool `json:"feita"`
+		DataPagamento string `json:"dataPagamento"`
 	}
 
-	c.ShouldBindJSON(&body)
-
-	if err := rt.service.AtualizarTarefa(id, body.Feita); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
-		return
+	// o corpo é opcional, sem ele a baixa é com a data de hoje.
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"erro": "corpo da requisição inválido"})
+			return
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "atualizado"})
-}
-
-//DELETE /tarefas/:id - remova uma tarefa
-
-func (rt *Rotas) Deletar(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	numero, err := strconv.Atoi(c.Param("numero"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"erro": "id invalido"})
+		c.JSON(http.StatusBadRequest, gin.H{"erro": "numero da parcela inválido"})
 		return
 	}
 
-	if err := rt.service.DeletarTarefa(id); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"erro": err.Error()})
+	parcela, err := rt.service.PagarParcela(c.Param("operacaoID"), numero, body.DataPagamento)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"erro": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "removido"})
+	c.JSON(http.StatusOK, parcela)
 }

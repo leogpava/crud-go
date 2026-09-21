@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>To-Do List — Go</title>
+    <title>Operacoes Financeiras — Go</title>
     <style>
         :root {
             --bg: #0b0e14;
@@ -63,17 +63,20 @@
             border-radius: var(--radius);
             padding: 2rem;
             width: 100%;
-            max-width: 480px;
+            max-width: 700px;
             margin-bottom: 1.5rem;
         }
 
         .input-row {
-            display: flex;
-            gap: 0.5rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
         }
 
-        input[type="text"] {
-            flex: 1;
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        select {
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
@@ -85,8 +88,17 @@
             transition: border-color 0.2s;
         }
 
-        input[type="text"]:focus {
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="date"]:focus,
+        select:focus {
             border-color: var(--accent);
+        }
+
+        .actions {
+            margin-top: 0.75rem;
+            display: flex;
+            justify-content: flex-end;
         }
 
         button {
@@ -114,7 +126,7 @@
             border-radius: var(--radius);
             padding: 1.5rem 2rem;
             width: 100%;
-            max-width: 480px;
+            max-width: 700px;
         }
 
         .list-title {
@@ -124,64 +136,45 @@
             margin-bottom: 1rem;
         }
 
+        .op-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+
+        .op-item {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.8rem;
+            background: rgba(0, 0, 0, 0.16);
+        }
+
+        .op-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .tag {
+            color: var(--accent);
+        }
+
+        .op-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.35rem 0.75rem;
+            font-size: 0.82rem;
+            color: var(--dim);
+        }
+
+        .op-grid strong {
+            color: var(--text);
+        }
+
         #lista {
             list-style: none;
-        }
-
-        #lista li {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.6rem 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.875rem;
-        }
-
-        #lista li:last-child {
-            border-bottom: none;
-        }
-
-        #lista li.feita .texto-tarefa {
-            text-decoration: line-through;
-            color: var(--dim);
-        }
-
-        .texto-tarefa {
-            flex: 1;
-            cursor: pointer;
-        }
-
-        .btn-check {
-            background: transparent;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            color: var(--accent);
-            width: 24px;
-            height: 24px;
-            font-size: 0.8rem;
-            padding: 0;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .btn-check:hover {
-            border-color: var(--accent);
-            background: transparent;
-        }
-
-        .btn-delete {
-            background: transparent;
-            border: none;
-            color: var(--dim);
-            font-size: 1rem;
-            padding: 0 0.3rem;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .btn-delete:hover {
-            background: transparent;
-            color: #f87171;
         }
 
         .empty {
@@ -199,35 +192,61 @@
         .msg.erro {
             color: #f87171;
         }
+
+        @media (max-width: 720px) {
+            .input-row,
+            .op-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .op-head {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 
 <body>
 
-    <p class="prompt"><span>leogpava</span>:~$ ./todo --run</p>
+    <p class="prompt"><span>leogpava</span>:~$ ./finops --run</p>
 
-    <h1>To-Do List</h1>
-    <p class="subtitle">// Go backend — CRUD</p>
+    <h1>Operacoes de Financiamento</h1>
+    <p class="subtitle">// Go backend — create + list</p>
 
     <div class="card">
         <div class="input-row">
-            <input type="text" id="nova-tarefa" placeholder="Nova tarefa..." autocomplete="off" />
-            <button id="btn-adicionar">[ adicionar ]</button>
+            <input type="text" id="operacaoID" placeholder="operacaoID (ex: OP-0001)" autocomplete="off" />
+            <input type="number" id="valorFinanciado" placeholder="valorFinanciado" step="0.01" min="0" />
+            <input type="number" id="quantidadeParcelas" placeholder="quantidadeParcelas" step="1" min="1" />
+            <input type="number" id="taxaJuros" placeholder="taxaJuros" step="0.0001" min="0" />
+            <input type="date" id="primeiroVencimento" />
+            <select id="sistemaAmortizacao">
+                <option value="PRICE">PRICE</option>
+                <option value="SAC">SAC</option>
+            </select>
+        </div>
+        <div class="actions">
+            <button id="btn-adicionar">[ criar operacao ]</button>
         </div>
         <p class="msg" id="msg"></p>
     </div>
 
     <div class="list-card">
-        <p class="list-title">// tarefas</p>
+        <p class="list-title">// operacoes cadastradas</p>
         <ul id="lista">
-            <li class="empty">nenhuma tarefa ainda.</li>
+            <li class="empty">nenhuma operacao ainda.</li>
         </ul>
     </div>
 
     <script>
         const API_BASE = 'http://localhost:8080';
 
-        const input = document.getElementById('nova-tarefa');
+        const inputOperacaoID = document.getElementById('operacaoID');
+        const inputValorFinanciado = document.getElementById('valorFinanciado');
+        const inputQuantidadeParcelas = document.getElementById('quantidadeParcelas');
+        const inputTaxaJuros = document.getElementById('taxaJuros');
+        const inputPrimeiroVencimento = document.getElementById('primeiroVencimento');
+        const inputSistemaAmortizacao = document.getElementById('sistemaAmortizacao');
         const btnAdd = document.getElementById('btn-adicionar');
         const lista = document.getElementById('lista');
         const msg = document.getElementById('msg');
@@ -238,104 +257,99 @@
             setTimeout(() => { msg.textContent = ''; }, 2000);
         }
 
-        // --- READ: carrega as tarefas ao abrir a página ---
-        async function carregarTarefas() {
+        function moedaBRL(valor) {
+            return Number(valor).toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+            });
+        }
+
+        async function carregarOperacoes() {
             try {
-                const res = await fetch(`${API_BASE}/tarefas`);
-                const tarefas = await res.json();
-                renderLista(tarefas);
+                const res = await fetch(`${API_BASE}/operacoes`);
+                const operacoes = await res.json();
+                renderLista(operacoes);
             } catch {
-                mostrarMsg('Erro ao carregar tarefas. O servidor está rodando?', true);
+                mostrarMsg('Erro ao carregar operacoes. O servidor esta rodando?', true);
             }
         }
 
-        function renderLista(tarefas) {
-            if (!tarefas || !tarefas.length) {
-                lista.innerHTML = '<li class="empty">nenhuma tarefa ainda.</li>';
+        function renderLista(operacoes) {
+            if (!operacoes || !operacoes.length) {
+                lista.innerHTML = '<li class="empty">Nenhuma operação ainda.</li>';
                 return;
             }
-            lista.innerHTML = tarefas.map(t => `
-        <li class="${t.feita ? 'feita' : ''}" data-id="${t.id}">
-          <button class="btn-check" data-action="toggle" data-id="${t.id}" data-feita="${t.feita}">
-            ${t.feita ? '✓' : ''}
-          </button>
-          <span class="texto-tarefa">${t.texto}</span>
-          <button class="btn-delete" data-action="delete" data-id="${t.id}">✕</button>
-        </li>
-      `).join('');
+
+            lista.innerHTML = operacoes.map(op => `
+                <li class="op-item">
+                    <div class="op-head">
+                        <span><strong>${op.operacaoID}</strong></span>
+                        <span class="tag">${op.sistemaAmortizacao}</span>
+                    </div>
+                    <div class="op-grid">
+                        <span><strong>id:</strong> ${op.id}</span>
+                        <span><strong>valor:</strong> ${moedaBRL(op.valorFinanciado)}</span>
+                        <span><strong>parcelas:</strong> ${op.quantidadeParcelas}</span>
+                        <span><strong>taxa:</strong> ${op.taxaJuros}%</span>
+                        <span><strong>1o vencimento:</strong> ${op.primeiroVencimento}</span>
+                    </div>
+                </li>
+            `).join('');
         }
 
-        // --- CREATE: adiciona nova tarefa ---
-        async function adicionarTarefa() {
-            const texto = input.value.trim();
-            if (!texto) {
-                mostrarMsg('Digite uma tarefa antes de adicionar.', true);
+        async function criarOperacao() {
+            const payload = {
+                operacaoID: inputOperacaoID.value.trim(),
+                valorFinanciado: Number(inputValorFinanciado.value),
+                quantidadeParcelas: Number(inputQuantidadeParcelas.value),
+                taxaJuros: Number(inputTaxaJuros.value),
+                primeiroVencimento: inputPrimeiroVencimento.value,
+                sistemaAmortizacao: inputSistemaAmortizacao.value,
+            };
+
+            if (!payload.operacaoID || !payload.primeiroVencimento || !payload.sistemaAmortizacao) {
+                mostrarMsg('Preencha os campos obrigatorios.', true);
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/tarefas`, {
+                const res = await fetch(`${API_BASE}/operacoes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ texto }),
+                    body: JSON.stringify(payload),
                 });
-                if (!res.ok) throw new Error();
 
-                input.value = '';
-                mostrarMsg('Tarefa adicionada!');
-                carregarTarefas();
-            } catch {
-                mostrarMsg('Erro ao adicionar tarefa.', true);
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    throw new Error(body.erro || 'erro ao criar operacao');
+                }
+
+                inputOperacaoID.value = '';
+                inputValorFinanciado.value = '';
+                inputQuantidadeParcelas.value = '';
+                inputTaxaJuros.value = '';
+                inputPrimeiroVencimento.value = '';
+                inputSistemaAmortizacao.value = 'PRICE';
+
+                mostrarMsg('Operacao criada com sucesso.');
+                carregarOperacoes();
+            } catch (err) {
+                mostrarMsg(err.message || 'Erro ao criar operacao.', true);
             }
         }
 
-        // --- UPDATE: marca como feita/não feita ---
-        async function alternarTarefa(id, feitaAtual) {
-            try {
-                const res = await fetch(`${API_BASE}/tarefas/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ feita: !feitaAtual }),
-                });
-                if (!res.ok) throw new Error();
-                carregarTarefas();
-            } catch {
-                mostrarMsg('Erro ao atualizar tarefa.', true);
-            }
-        }
+        btnAdd.addEventListener('click', criarOperacao);
 
-        // --- DELETE: remove a tarefa ---
-        async function deletarTarefa(id) {
-            try {
-                const res = await fetch(`${API_BASE}/tarefas/${id}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error();
-                mostrarMsg('Tarefa removida.');
-                carregarTarefas();
-            } catch {
-                mostrarMsg('Erro ao remover tarefa.', true);
-            }
-        }
-
-        btnAdd.addEventListener('click', adicionarTarefa);
-        input.addEventListener('keydown', e => {
-            if (e.key === 'Enter') adicionarTarefa();
-        });
-
-        lista.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if (!btn) return;
-
-            const id = btn.dataset.id;
-            const action = btn.dataset.action;
-
-            if (action === 'toggle') {
-                alternarTarefa(id, btn.dataset.feita === 'true');
-            } else if (action === 'delete') {
-                deletarTarefa(id);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                const active = document.activeElement;
+                if (active && (active.tagName === 'INPUT' || active.tagName === 'SELECT')) {
+                    criarOperacao();
+                }
             }
         });
 
-        carregarTarefas();
+        carregarOperacoes();
     </script>
 
 </body>

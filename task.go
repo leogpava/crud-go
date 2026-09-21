@@ -4,10 +4,23 @@ import (
 	"database/sql"
 )
 
-type Tarefa struct {
-	ID 	  int    `json:"id"`
-	Texto string `json:"texto"`
-	Feita bool   `json:"feita"`
+type Operacao struct {
+	ID                 string  `json:"id"`
+	OperacaoID         string  `json:"operacaoID"`
+	ValorFinanciado    float64 `json:"valorFinanciado"`
+	QuantidadeParcelas int     `json:"quantidadeParcelas"`
+	TaxaJuros          float64 `json:"taxaJuros"`
+	PrimeiroVencimento string  `json:"primeiroVencimento"`
+	SistemaAmortizacao string  `json:"sistemaAmortizacao"`
+}
+
+type NovaOperacao struct {
+	OperacaoID         string
+	ValorFinanciado    float64
+	QuantidadeParcelas int
+	TaxaJuros          float64
+	PrimeiroVencimento string
+	SistemaAmortizacao string
 }
 
 
@@ -24,8 +37,19 @@ func NovoRepositorio(db *sql.DB) *Repositorio {
 	}
 }
 
-func (r *Repositorio) Listar() ([]Tarefa, error) {
-	rows, err := r.db.Query("SELECT id, texto, feita FROM tarefas")
+func (r *Repositorio) ListarOperacoes() ([]Operacao, error) {
+	rows, err := r.db.Query(`
+		SELECT
+			id::text,
+			operacao_id,
+			valor_financiado,
+			quantidade_parcelas,
+			taxa_juros,
+			to_char(primeiro_vencimento, 'YYYY-MM-DD'),
+			sistema_amortizacao
+		FROM financiamento
+		ORDER BY primeiro_vencimento, operacao_id
+	`)
 
 	if err != nil {
 		return nil, err
@@ -33,87 +57,84 @@ func (r *Repositorio) Listar() ([]Tarefa, error) {
 
 	defer rows.Close()
 
-	tarefas := []Tarefa{}
+	operacoes := []Operacao{}
 
 	for rows.Next() {
-		tarefa := Tarefa{}
+		operacao := Operacao{}
 
 		err := rows.Scan(
-		&tarefa.ID,
-        &tarefa.Texto,
-        &tarefa.Feita,
+			&operacao.ID,
+			&operacao.OperacaoID,
+			&operacao.ValorFinanciado,
+			&operacao.QuantidadeParcelas,
+			&operacao.TaxaJuros,
+			&operacao.PrimeiroVencimento,
+			&operacao.SistemaAmortizacao,
 		)
 
 		if err != nil {
 			return nil, err
 		}
 
-		tarefas = append(tarefas, tarefa)
+		operacoes = append(operacoes, operacao)
 	}
 
-	return tarefas, nil
+	return operacoes, nil
 }
 
-func (r *Repositorio) Criar( texto string ) (Tarefa, error) {
+func (r *Repositorio) CriarOperacao(nova NovaOperacao) (Operacao, error) {
 
-	row := r.db.QueryRow(
-		"INSERT INTO tarefas (texto) VALUES ($1) RETURNING id, texto, feita", texto,
+	row := r.db.QueryRow(`
+		INSERT INTO financiamento (
+			id,
+			operacao_id,
+			valor_financiado,
+			quantidade_parcelas,
+			taxa_juros,
+			primeiro_vencimento,
+			sistema_amortizacao
+		)
+		VALUES (
+			gen_random_uuid(),
+			$1,
+			$2,
+			$3,
+			$4,
+			$5::date,
+			$6
+		)
+		RETURNING
+			id::text,
+			operacao_id,
+			valor_financiado,
+			quantidade_parcelas,
+			taxa_juros,
+			to_char(primeiro_vencimento, 'YYYY-MM-DD'),
+			sistema_amortizacao
+	`,
+		nova.OperacaoID,
+		nova.ValorFinanciado,
+		nova.QuantidadeParcelas,
+		nova.TaxaJuros,
+		nova.PrimeiroVencimento,
+		nova.SistemaAmortizacao,
 	)
 
-	tarefa := Tarefa{}
+	operacao := Operacao{}
 
 	err := row.Scan(
-			&tarefa.ID,
-			&tarefa.Texto,
-			&tarefa.Feita,
+			&operacao.ID,
+			&operacao.OperacaoID,
+			&operacao.ValorFinanciado,
+			&operacao.QuantidadeParcelas,
+			&operacao.TaxaJuros,
+			&operacao.PrimeiroVencimento,
+			&operacao.SistemaAmortizacao,
 	)
 
 	if err != nil {
-		return Tarefa{}, err
+		return Operacao{}, err
 	}
 
-	return tarefa, nil
-}
-
-func (r *Repositorio) Atualizar(id int, feita bool) (bool, error) {
-	att, err := r.db.Exec("UPDATE tarefas SET feita = $1 WHERE id = $2",
-	feita,
-	id,
-	)
-
-	if err != nil {
-		return false, err
-	}
-
-	linhas, err := att.RowsAffected()
-
-	if err != nil {
-		return false, err
-	}
-
-	if linhas == 0 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (r *Repositorio) Deletar(id int) (bool, error) {
-	del, err := r.db.Exec("DELETE FROM tarefas WHERE id = $1", id)
-
-	if err != nil {
-		return false, err
-	}
-
-	linhas, err := del.RowsAffected()
-
-	if err != nil {
-			return false, err
-	}
-
-	if linhas == 0 {
-		return false, nil
-	}
-
-	return true, nil
+	return operacao, nil
 }
