@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: finops
+    volumes:
+      # cria as tabelas na primeira vez que o banco sobe.
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d finops"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/finops?sslmode=disable
+      # localhost aqui dentro é o proprio container. troca pelo ip do grupo de juros no lab, ex.: http://10.114.35.x:8081
+      JUROS_API_URL: http://host.docker.internal:8081
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  dados:

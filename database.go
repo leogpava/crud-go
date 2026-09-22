@@ -9,10 +9,8 @@ import (
 )
 
 func ConectarBanco() (*sql.DB, error) {
-	err := godotenv.Load()
-	if err != nil {
-		return nil, err
-	}
+	// no docker nao tem .env, as variaveis vem do docker-compose. entao se nao achar o arquivo segue o baile.
+	godotenv.Load()
 
 	dbURL := os.Getenv("DATABASE_URL")
 

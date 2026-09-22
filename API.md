@@ -247,9 +247,21 @@ curl -X POST http://localhost:8080/operacoes/OP-0001/parcelas/1/pagamento \
 
 ## Rodando local
 
+### Com Docker (não precisa de Go nem de Postgres instalados)
+
+```bash
+docker compose up --build
+```
+
+Sobe o Postgres (com as tabelas de `schema.sql` criadas na primeira subida) e a API na `:8080`. Para zerar o banco: `docker compose down -v`.
+
+A URL da API de Juros fica em `JUROS_API_URL` no [docker-compose.yml](docker-compose.yml). Dentro do container, `localhost` é o próprio container — use o IP da máquina do grupo de Juros no lab.
+
+### Sem Docker
+
 ```bash
 # 1. Postgres com as tabelas
-psql $DATABASE_URL -f examples/table.sql
+psql $DATABASE_URL -f schema.sql
 
 # 2. .env na raiz
 DATABASE_URL=postgres://usuario:senha@localhost:5432/finops?sslmode=disable
